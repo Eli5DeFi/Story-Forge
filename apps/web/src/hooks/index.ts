@@ -2,3 +2,4 @@
 export * from './useStory';
 export * from './useBetting';
 export * from './useCompendium';
+export * from './useContracts';

@@ -2,8 +2,8 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { BookOpen, Menu, X } from 'lucide-react';
+import { AuthButton } from '@/components/auth/AuthButton';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -47,18 +47,9 @@ export function Navbar() {
           ))}
         </div>
 
-        {/* Wallet Connect */}
+        {/* Wallet Connect & Auth */}
         <div className="hidden md:block">
-          <ConnectButton
-            accountStatus={{
-              smallScreen: 'avatar',
-              largeScreen: 'full',
-            }}
-            showBalance={{
-              smallScreen: false,
-              largeScreen: true,
-            }}
-          />
+          <AuthButton />
         </div>
 
         {/* Mobile Menu Button */}
@@ -96,7 +87,7 @@ export function Navbar() {
               </Link>
             ))}
             <div className="pt-2">
-              <ConnectButton />
+              <AuthButton />
             </div>
           </div>
         </div>

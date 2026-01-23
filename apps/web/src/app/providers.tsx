@@ -11,6 +11,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WagmiProvider } from 'wagmi';
 import { base, baseSepolia, polygon, polygonMumbai } from 'wagmi/chains';
 import '@rainbow-me/rainbowkit/styles.css';
+import { AuthProvider } from '@/context/AuthContext';
 
 const config = getDefaultConfig({
   appName: 'Story-Forge',
@@ -53,7 +54,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
           })}
           modalSize="compact"
         >
-          {mounted && children}
+          <AuthProvider>
+            {mounted && children}
+          </AuthProvider>
         </RainbowKitProvider>
       </QueryClientProvider>
     </WagmiProvider>
