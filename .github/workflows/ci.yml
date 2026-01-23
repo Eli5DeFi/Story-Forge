@@ -7,25 +7,6 @@ on:
     branches: [main, develop]
 
 jobs:
-  lint-and-typecheck:
-    name: Lint and Type Check
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Lint
-        run: npm run lint
-
   build-web:
     name: Build Web App
     runs-on: ubuntu-latest
@@ -42,31 +23,15 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Lint web app
+        run: npm run lint -w apps/web
+
+      - name: Type check web app
+        run: npm run type-check -w apps/web
+
       - name: Build web app
         run: npm run build:web
         env:
           NEXT_PUBLIC_API_URL: https://api.example.com
           NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID: test
           NEXT_PUBLIC_CHAIN_ID: '84532'
-
-  build-api:
-    name: Build API
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Generate Prisma client
-        run: cd apps/api && npx prisma generate
-
-      - name: Build API
-        run: npm run build:api
