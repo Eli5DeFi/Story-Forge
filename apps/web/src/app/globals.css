@@ -33,6 +33,13 @@
     --ring: 45 93% 47%;
 
     --radius: 0.5rem;
+
+    /* Futuristic CSS Variables */
+    --neon-blue: #00f0ff;
+    --neon-purple: #bf00ff;
+    --neon-gold: #f59e0b;
+    --cyber-glow: rgba(0, 240, 255, 0.15);
+    --scan-line-color: rgba(0, 240, 255, 0.03);
   }
 
   .light {
@@ -72,28 +79,437 @@
   }
   body {
     @apply bg-background text-foreground;
+    background-image:
+      radial-gradient(ellipse at top, rgba(0, 240, 255, 0.03) 0%, transparent 50%),
+      radial-gradient(ellipse at bottom, rgba(191, 0, 255, 0.02) 0%, transparent 50%);
   }
 }
 
-/* Custom scrollbar */
+/* ============================================
+   FUTURISTIC SCROLLBAR
+   ============================================ */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-background;
+  @apply bg-void-950;
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-muted rounded-full;
+  background: linear-gradient(180deg, var(--neon-blue), var(--neon-purple));
+  border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-muted-foreground/50;
+  background: linear-gradient(180deg, #00f0ff, #bf00ff);
+  box-shadow: 0 0 10px var(--neon-blue);
 }
 
-/* Story reader typography */
+/* ============================================
+   FUTURISTIC TEXT EFFECTS
+   ============================================ */
+.text-glow {
+  text-shadow:
+    0 0 10px var(--neon-blue),
+    0 0 20px var(--neon-blue),
+    0 0 30px var(--neon-blue);
+}
+
+.text-glow-gold {
+  text-shadow:
+    0 0 10px var(--neon-gold),
+    0 0 20px var(--neon-gold),
+    0 0 30px var(--neon-gold);
+}
+
+.text-gradient-cyber {
+  background: linear-gradient(135deg, var(--neon-blue), var(--neon-purple));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.text-gradient-gold {
+  background: linear-gradient(135deg, #fcd34d, #f59e0b, #d97706);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ============================================
+   FUTURISTIC BORDERS & FRAMES
+   ============================================ */
+.border-cyber {
+  border: 1px solid rgba(0, 240, 255, 0.2);
+  position: relative;
+}
+
+.border-cyber::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  right: -1px;
+  bottom: -1px;
+  background: linear-gradient(
+    135deg,
+    rgba(0, 240, 255, 0.3),
+    transparent 50%,
+    rgba(191, 0, 255, 0.3)
+  );
+  z-index: -1;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.border-cyber:hover::before {
+  opacity: 1;
+}
+
+.corner-brackets {
+  position: relative;
+}
+
+.corner-brackets::before,
+.corner-brackets::after {
+  content: '';
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-color: var(--neon-blue);
+  border-style: solid;
+  opacity: 0.5;
+}
+
+.corner-brackets::before {
+  top: 0;
+  left: 0;
+  border-width: 2px 0 0 2px;
+}
+
+.corner-brackets::after {
+  bottom: 0;
+  right: 0;
+  border-width: 0 2px 2px 0;
+}
+
+/* Animated border gradient */
+.border-flow {
+  position: relative;
+  background: linear-gradient(var(--background), var(--background)) padding-box,
+    linear-gradient(
+        90deg,
+        var(--neon-blue),
+        var(--neon-purple),
+        var(--neon-blue)
+      )
+      border-box;
+  border: 1px solid transparent;
+  background-size: 100% 100%, 200% 100%;
+  animation: border-flow 3s linear infinite;
+}
+
+@keyframes border-flow {
+  0% {
+    background-position: 0% 0%, 0% 0%;
+  }
+  100% {
+    background-position: 0% 0%, 200% 0%;
+  }
+}
+
+/* ============================================
+   FUTURISTIC CARDS
+   ============================================ */
+.card-cyber {
+  @apply relative bg-void-950/80 backdrop-blur-md rounded-lg overflow-hidden;
+  border: 1px solid rgba(0, 240, 255, 0.1);
+  transition: all 0.3s ease;
+}
+
+.card-cyber::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--neon-blue),
+    transparent
+  );
+  opacity: 0.5;
+}
+
+.card-cyber::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 240, 255, 0.03) 0%,
+    transparent 50%
+  );
+  pointer-events: none;
+}
+
+.card-cyber:hover {
+  border-color: rgba(0, 240, 255, 0.3);
+  box-shadow:
+    0 0 20px rgba(0, 240, 255, 0.1),
+    inset 0 0 20px rgba(0, 240, 255, 0.02);
+  transform: translateY(-2px);
+}
+
+/* Glass card variant */
+.card-glass {
+  @apply relative backdrop-blur-xl rounded-lg overflow-hidden;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.05) 0%,
+    rgba(255, 255, 255, 0.02) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* ============================================
+   FUTURISTIC BUTTONS
+   ============================================ */
+.btn-cyber {
+  @apply relative px-6 py-3 font-medium tracking-wider uppercase text-sm;
+  background: linear-gradient(135deg, rgba(0, 240, 255, 0.1), rgba(191, 0, 255, 0.1));
+  border: 1px solid rgba(0, 240, 255, 0.3);
+  clip-path: polygon(
+    0 0,
+    calc(100% - 10px) 0,
+    100% 10px,
+    100% 100%,
+    10px 100%,
+    0 calc(100% - 10px)
+  );
+  transition: all 0.3s ease;
+}
+
+.btn-cyber::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, var(--neon-blue), var(--neon-purple));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: -1;
+}
+
+.btn-cyber:hover {
+  color: white;
+  border-color: transparent;
+  box-shadow: 0 0 20px rgba(0, 240, 255, 0.4);
+}
+
+.btn-cyber:hover::before {
+  opacity: 1;
+}
+
+.btn-neon {
+  @apply relative px-6 py-3 font-medium;
+  border: 2px solid var(--neon-blue);
+  background: transparent;
+  color: var(--neon-blue);
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.btn-neon::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  background: var(--neon-blue);
+  transition: all 0.3s ease;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+}
+
+.btn-neon:hover {
+  color: var(--background);
+  box-shadow:
+    0 0 10px var(--neon-blue),
+    0 0 20px var(--neon-blue),
+    inset 0 0 10px rgba(0, 240, 255, 0.3);
+}
+
+.btn-neon:hover::before {
+  width: 300%;
+  height: 300%;
+}
+
+/* ============================================
+   SCAN LINE EFFECT
+   ============================================ */
+.scan-lines {
+  position: relative;
+  overflow: hidden;
+}
+
+.scan-lines::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    var(--scan-line-color) 2px,
+    var(--scan-line-color) 4px
+  );
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+.scan-line-moving {
+  position: relative;
+  overflow: hidden;
+}
+
+.scan-line-moving::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--neon-blue),
+    transparent
+  );
+  animation: scan-line 4s linear infinite;
+}
+
+@keyframes scan-line {
+  0% {
+    top: -2px;
+  }
+  100% {
+    top: 100%;
+  }
+}
+
+/* ============================================
+   HOLOGRAPHIC EFFECTS
+   ============================================ */
+.holo-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.holo-shimmer::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent 30%,
+    rgba(0, 240, 255, 0.1) 50%,
+    transparent 70%
+  );
+  animation: holo-shimmer 3s ease-in-out infinite;
+}
+
+@keyframes holo-shimmer {
+  0% {
+    transform: translateX(-100%) rotate(45deg);
+  }
+  100% {
+    transform: translateX(100%) rotate(45deg);
+  }
+}
+
+/* ============================================
+   DATA/HUD ELEMENTS
+   ============================================ */
+.hud-element {
+  @apply relative font-mono text-xs uppercase tracking-widest;
+  color: var(--neon-blue);
+}
+
+.hud-element::before {
+  content: '//';
+  @apply mr-2 opacity-50;
+}
+
+.data-label {
+  @apply text-xs uppercase tracking-widest text-muted-foreground;
+  font-family: var(--font-mono);
+}
+
+.data-value {
+  @apply font-mono text-neon-blue;
+}
+
+/* Status indicators */
+.status-online {
+  @apply relative;
+}
+
+.status-online::before {
+  content: '';
+  @apply inline-block w-2 h-2 rounded-full mr-2;
+  background: #00ff9f;
+  box-shadow: 0 0 10px #00ff9f;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.status-offline::before {
+  background: #ff4444;
+  box-shadow: 0 0 10px #ff4444;
+}
+
+/* ============================================
+   GEOMETRIC DECORATIONS
+   ============================================ */
+.triangle-corner {
+  position: relative;
+}
+
+.triangle-corner::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  border-style: solid;
+  border-width: 0 30px 30px 0;
+  border-color: transparent var(--neon-blue) transparent transparent;
+  opacity: 0.3;
+}
+
+.hex-bg {
+  background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 0l25.98 15v30L30 60 4.02 45V15z' fill='none' stroke='rgba(0,240,255,0.05)' stroke-width='0.5'/%3E%3C/svg%3E");
+}
+
+.grid-bg {
+  background-image:
+    linear-gradient(rgba(0, 240, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 240, 255, 0.03) 1px, transparent 1px);
+  background-size: 50px 50px;
+}
+
+/* ============================================
+   STORY READER TYPOGRAPHY
+   ============================================ */
 .prose-story {
   @apply text-lg leading-relaxed;
 }
@@ -110,16 +526,20 @@
   @apply text-primary;
 }
 
-/* Betting card animations */
+/* ============================================
+   BETTING CARD ANIMATIONS
+   ============================================ */
 .betting-card {
-  @apply transition-all duration-300;
+  @apply transition-all duration-300 card-cyber;
 }
 
 .betting-card:hover {
   @apply transform scale-[1.02];
 }
 
-/* Progress bar gradient */
+/* ============================================
+   PROGRESS BARS
+   ============================================ */
 .progress-gradient {
   background: linear-gradient(
     90deg,
@@ -128,7 +548,20 @@
   );
 }
 
-/* Fantasy glow effect */
+.progress-cyber {
+  @apply relative h-2 rounded-full overflow-hidden;
+  background: rgba(0, 240, 255, 0.1);
+}
+
+.progress-cyber > div {
+  @apply h-full rounded-full;
+  background: linear-gradient(90deg, var(--neon-blue), var(--neon-purple));
+  box-shadow: 0 0 10px var(--neon-blue);
+}
+
+/* ============================================
+   GLOW EFFECTS
+   ============================================ */
 .glow-gold {
   box-shadow: 0 0 20px rgba(245, 158, 11, 0.3);
 }
@@ -137,14 +570,24 @@
   box-shadow: 0 0 30px rgba(245, 158, 11, 0.5);
 }
 
-/* Relationship diagram node styling */
+.glow-cyber {
+  box-shadow: 0 0 20px rgba(0, 240, 255, 0.3);
+}
+
+.glow-cyber:hover {
+  box-shadow: 0 0 30px rgba(0, 240, 255, 0.5);
+}
+
+/* ============================================
+   RELATIONSHIP DIAGRAM
+   ============================================ */
 .relationship-node {
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .relationship-node:hover {
-  filter: brightness(1.2);
+  filter: brightness(1.2) drop-shadow(0 0 10px var(--neon-blue));
 }
 
 .relationship-edge {
@@ -154,4 +597,66 @@
 
 .relationship-edge:hover {
   stroke-opacity: 1;
+}
+
+/* ============================================
+   LOADING STATES
+   ============================================ */
+.skeleton-cyber {
+  @apply relative overflow-hidden;
+  background: linear-gradient(
+    90deg,
+    rgba(0, 240, 255, 0.05) 0%,
+    rgba(0, 240, 255, 0.1) 50%,
+    rgba(0, 240, 255, 0.05) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite;
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* ============================================
+   RESPONSIVE ADJUSTMENTS
+   ============================================ */
+@media (max-width: 768px) {
+  .btn-cyber {
+    @apply px-4 py-2 text-xs;
+  }
+
+  .corner-brackets::before,
+  .corner-brackets::after {
+    width: 12px;
+    height: 12px;
+  }
+}
+
+/* ============================================
+   PARTICLE CONTAINER
+   ============================================ */
+.particles-container {
+  @apply fixed inset-0 pointer-events-none overflow-hidden;
+  z-index: 0;
+}
+
+/* ============================================
+   NOISE TEXTURE OVERLAY
+   ============================================ */
+.noise-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  opacity: 0.02;
+  z-index: 9999;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
 }
