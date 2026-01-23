@@ -1,0 +1,39 @@
+{
+  "name": "story-forge",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Interactive AI-generated web novel platform with prediction markets",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspaces --if-present",
+    "dev:web": "npm run dev -w apps/web",
+    "dev:api": "npm run dev -w apps/api",
+    "build": "npm run build --workspaces --if-present",
+    "build:web": "npm run build -w apps/web",
+    "build:api": "npm run build -w apps/api",
+    "build:contracts": "npm run build -w packages/contracts",
+    "test": "npm run test --workspaces --if-present",
+    "test:contracts": "npm run test -w packages/contracts",
+    "lint": "npm run lint --workspaces --if-present",
+    "clean": "rm -rf node_modules apps/*/node_modules packages/*/node_modules",
+    "db:generate": "npm run db:generate -w apps/api",
+    "db:push": "npm run db:push -w apps/api",
+    "db:migrate": "npm run db:migrate -w apps/api"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "keywords": [
+    "web3",
+    "nft",
+    "ai",
+    "story",
+    "betting",
+    "prediction-market"
+  ],
+  "author": "Story-Forge Team",
+  "license": "Apache-2.0"
+}

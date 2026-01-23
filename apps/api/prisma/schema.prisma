@@ -1,0 +1,402 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============ User & Authentication ============
+
+model User {
+  id            String    @id @default(cuid())
+  walletAddress String    @unique @map("wallet_address")
+  username      String?
+  avatarUrl     String?   @map("avatar_url")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  totalWagered  Decimal   @default(0) @map("total_wagered") @db.Decimal(20, 6)
+  totalWon      Decimal   @default(0) @map("total_won") @db.Decimal(20, 6)
+  winStreak     Int       @default(0) @map("win_streak")
+  bestStreak    Int       @default(0) @map("best_streak")
+
+  bets    UserBet[]
+  payouts Payout[]
+
+  @@map("users")
+}
+
+// ============ Story & Chapters ============
+
+model Story {
+  id             String      @id @default(cuid())
+  title          String
+  slug           String      @unique
+  synopsis       String      @db.Text
+  genre          String
+  status         StoryStatus @default(ACTIVE)
+  coverImageUrl  String?     @map("cover_image_url")
+  createdAt      DateTime    @default(now()) @map("created_at")
+  updatedAt      DateTime    @updatedAt @map("updated_at")
+  currentChapter Int         @default(0) @map("current_chapter")
+
+  // AI generation context
+  worldState    Json?  @map("world_state")
+  plotThreads   Json?  @map("plot_threads")
+  styleGuide    String? @map("style_guide") @db.Text
+
+  chapters    Chapter[]
+  characters  Character[]
+  items       Item[]
+  locations   Location[]
+  monsters    Monster[]
+  loreEntries LoreEntry[]
+
+  @@map("stories")
+}
+
+enum StoryStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  COMPLETED
+  ARCHIVED
+}
+
+model Chapter {
+  id              String        @id @default(cuid())
+  storyId         String        @map("story_id")
+  chapterNumber   Int           @map("chapter_number")
+  title           String
+  content         String        @db.Text
+  summary         String?       @db.Text
+  publishedAt     DateTime?     @map("published_at")
+  bettingEndsAt   DateTime?     @map("betting_ends_at")
+  selectedOutcome String?       @map("selected_outcome")
+  aiReasoning     String?       @map("ai_reasoning") @db.Text
+  ipfsHash        String?       @map("ipfs_hash")
+  status          ChapterStatus @default(DRAFT)
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  // Extracted entities from this chapter
+  extractedEntities Json? @map("extracted_entities")
+
+  story        Story         @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  outcomes     Outcome[]
+  bettingPools BettingPool[]
+
+  @@unique([storyId, chapterNumber])
+  @@map("chapters")
+}
+
+enum ChapterStatus {
+  DRAFT
+  GENERATING
+  PUBLISHED
+  BETTING_OPEN
+  BETTING_CLOSED
+  RESOLVED
+  FAILED
+}
+
+// ============ Betting System ============
+
+model Outcome {
+  id              String   @id @default(cuid())
+  chapterId       String   @map("chapter_id")
+  optionNumber    Int      @map("option_number")
+  teaserText      String   @map("teaser_text") @db.Text
+  fullNarrative   String?  @map("full_narrative") @db.Text
+  emotionalTone   String?  @map("emotional_tone")
+  plotImplications Json?   @map("plot_implications")
+  isSelected      Boolean  @default(false) @map("is_selected")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  chapter     Chapter      @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  bettingPool BettingPool?
+  userBets    UserBet[]
+
+  @@unique([chapterId, optionNumber])
+  @@map("outcomes")
+}
+
+model BettingPool {
+  id              String     @id @default(cuid())
+  chapterId       String     @map("chapter_id")
+  outcomeId       String     @unique @map("outcome_id")
+  totalAmountUsdc Decimal    @default(0) @map("total_amount_usdc") @db.Decimal(20, 6)
+  totalAmountUsdt Decimal    @default(0) @map("total_amount_usdt") @db.Decimal(20, 6)
+  voterCount      Int        @default(0) @map("voter_count")
+  status          PoolStatus @default(OPEN)
+  createdAt       DateTime   @default(now()) @map("created_at")
+  resolvedAt      DateTime?  @map("resolved_at")
+  carryoverUsdc   Decimal    @default(0) @map("carryover_usdc") @db.Decimal(20, 6)
+  carryoverUsdt   Decimal    @default(0) @map("carryover_usdt") @db.Decimal(20, 6)
+
+  // On-chain reference
+  onChainPoolId String? @map("on_chain_pool_id")
+
+  chapter         Chapter         @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  outcome         Outcome         @relation(fields: [outcomeId], references: [id], onDelete: Cascade)
+  userBets        UserBet[]
+  treasuryEntries TreasuryEntry[]
+  payouts         Payout[]
+
+  @@map("betting_pools")
+}
+
+enum PoolStatus {
+  OPEN
+  CLOSED
+  RESOLVING
+  RESOLVED
+  CARRIED_OVER
+}
+
+model UserBet {
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id")
+  outcomeId String    @map("outcome_id")
+  poolId    String    @map("pool_id")
+  amount    Decimal   @db.Decimal(20, 6)
+  tokenType TokenType @map("token_type")
+  feePaid   Decimal   @map("fee_paid") @db.Decimal(20, 6)
+  txHash    String    @map("tx_hash")
+  status    BetStatus @default(PENDING)
+  createdAt DateTime  @default(now()) @map("created_at")
+  claimedAt DateTime? @map("claimed_at")
+
+  user    User        @relation(fields: [userId], references: [id])
+  outcome Outcome     @relation(fields: [outcomeId], references: [id])
+  pool    BettingPool @relation(fields: [poolId], references: [id])
+
+  @@index([userId])
+  @@index([poolId])
+  @@map("user_bets")
+}
+
+enum TokenType {
+  USDC
+  USDT
+}
+
+enum BetStatus {
+  PENDING
+  CONFIRMED
+  WON
+  LOST
+  CLAIMED
+  REFUNDED
+}
+
+model TreasuryEntry {
+  id        String    @id @default(cuid())
+  poolId    String    @map("pool_id")
+  amount    Decimal   @db.Decimal(20, 6)
+  tokenType TokenType @map("token_type")
+  source    String    // 'fee' or 'treasury_cut'
+  txHash    String?   @map("tx_hash")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  pool BettingPool @relation(fields: [poolId], references: [id])
+
+  @@map("treasury_entries")
+}
+
+model Payout {
+  id        String       @id @default(cuid())
+  userId    String       @map("user_id")
+  poolId    String       @map("pool_id")
+  amount    Decimal      @db.Decimal(20, 6)
+  tokenType TokenType    @map("token_type")
+  txHash    String?      @map("tx_hash")
+  status    PayoutStatus @default(PENDING)
+  createdAt DateTime     @default(now()) @map("created_at")
+  paidAt    DateTime?    @map("paid_at")
+
+  user User        @relation(fields: [userId], references: [id])
+  pool BettingPool @relation(fields: [poolId], references: [id])
+
+  @@map("payouts")
+}
+
+enum PayoutStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+// ============ Compendium Entities ============
+
+model Character {
+  id              String   @id @default(cuid())
+  storyId         String   @map("story_id")
+  name            String
+  description     String   @db.Text
+  shortBio        String?  @map("short_bio")
+  firstAppearance Int      @map("first_appearance")
+  imageUrl        String?  @map("image_url")
+  traits          Json?    // { personality: [], abilities: [], etc }
+  status          String?  // alive, deceased, unknown
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // NFT info
+  nftTokenId String?  @map("nft_token_id")
+  nftMinted  Boolean  @default(false) @map("nft_minted")
+  nftIpfsUri String?  @map("nft_ipfs_uri")
+
+  story          Story               @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  relationshipsA CharacterRelation[] @relation("CharacterA")
+  relationshipsB CharacterRelation[] @relation("CharacterB")
+  ownedItems     Item[]
+
+  @@unique([storyId, name])
+  @@map("characters")
+}
+
+model CharacterRelation {
+  id           String   @id @default(cuid())
+  characterAId String   @map("character_a_id")
+  characterBId String   @map("character_b_id")
+  relationship String   // ally, enemy, family, romantic, mentor, etc
+  description  String?  @db.Text
+  establishedCh Int     @map("established_chapter")
+  notes        String?  @db.Text
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  characterA Character @relation("CharacterA", fields: [characterAId], references: [id], onDelete: Cascade)
+  characterB Character @relation("CharacterB", fields: [characterBId], references: [id], onDelete: Cascade)
+
+  @@unique([characterAId, characterBId])
+  @@map("character_relations")
+}
+
+model Item {
+  id              String   @id @default(cuid())
+  storyId         String   @map("story_id")
+  name            String
+  description     String   @db.Text
+  type            ItemType
+  rarity          Rarity   @default(COMMON)
+  firstAppearance Int      @map("first_appearance")
+  ownerCharId     String?  @map("owner_char_id")
+  imageUrl        String?  @map("image_url")
+  properties      Json?    // { damage: 10, magical: true, etc }
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // NFT info
+  nftTokenId String?  @map("nft_token_id")
+  nftMinted  Boolean  @default(false) @map("nft_minted")
+  nftIpfsUri String?  @map("nft_ipfs_uri")
+
+  story          Story      @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  ownerCharacter Character? @relation(fields: [ownerCharId], references: [id])
+
+  @@unique([storyId, name])
+  @@map("items")
+}
+
+enum ItemType {
+  WEAPON
+  ARMOR
+  ACCESSORY
+  CONSUMABLE
+  KEY_ITEM
+  ARTIFACT
+  TOOL
+  CURRENCY
+}
+
+enum Rarity {
+  COMMON
+  UNCOMMON
+  RARE
+  EPIC
+  LEGENDARY
+  MYTHIC
+}
+
+model Location {
+  id              String   @id @default(cuid())
+  storyId         String   @map("story_id")
+  name            String
+  description     String   @db.Text
+  type            String   // city, dungeon, forest, etc
+  region          String?
+  firstAppearance Int      @map("first_appearance")
+  connectedLocs   String[] @map("connected_locations")
+  imageUrl        String?  @map("image_url")
+  coordinates     Json?    // { x, y } for map rendering
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // NFT info
+  nftTokenId String?  @map("nft_token_id")
+  nftMinted  Boolean  @default(false) @map("nft_minted")
+  nftIpfsUri String?  @map("nft_ipfs_uri")
+
+  story Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
+
+  @@unique([storyId, name])
+  @@map("locations")
+}
+
+model Monster {
+  id              String   @id @default(cuid())
+  storyId         String   @map("story_id")
+  name            String
+  description     String   @db.Text
+  species         String?
+  threatLevel     Int      @map("threat_level") // 1-10
+  abilities       String[]
+  weaknesses      String[]
+  firstAppearance Int      @map("first_appearance")
+  imageUrl        String?  @map("image_url")
+  isBoss          Boolean  @default(false) @map("is_boss")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // NFT info
+  nftTokenId String?  @map("nft_token_id")
+  nftMinted  Boolean  @default(false) @map("nft_minted")
+  nftIpfsUri String?  @map("nft_ipfs_uri")
+
+  story Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
+
+  @@unique([storyId, name])
+  @@map("monsters")
+}
+
+model LoreEntry {
+  id              String   @id @default(cuid())
+  storyId         String   @map("story_id")
+  category        String   // history, magic_system, culture, prophecy, etc
+  title           String
+  content         String   @db.Text
+  relatedEntities String[] @map("related_entities") // IDs of related characters/items/etc
+  chapterRefs     Int[]    @map("chapter_refs")
+  tags            String[]
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  story Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
+
+  @@map("lore_entries")
+}
+
+// ============ System ============
+
+model SystemConfig {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     Json
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("system_config")
+}
