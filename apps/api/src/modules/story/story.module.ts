@@ -5,6 +5,9 @@ import { StoryController } from './story.controller';
 import { ChapterGenerationProcessor } from './processors/chapter-generation.processor';
 import { AiGenerationService } from './services/ai-generation.service';
 import { EntityExtractionService } from './services/entity-extraction.service';
+import { StoryContextService } from './services/story-context.service';
+import { ImageGenerationService } from './services/image-generation.service';
+import { IpfsService } from './services/ipfs.service';
 
 @Module({
   imports: [
@@ -17,8 +20,17 @@ import { EntityExtractionService } from './services/entity-extraction.service';
     StoryService,
     AiGenerationService,
     EntityExtractionService,
+    StoryContextService,
+    ImageGenerationService,
+    IpfsService,
     ChapterGenerationProcessor,
   ],
-  exports: [StoryService, AiGenerationService],
+  exports: [
+    StoryService,
+    AiGenerationService,
+    StoryContextService,
+    ImageGenerationService,
+    IpfsService,
+  ],
 })
 export class StoryModule {}
