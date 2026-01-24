@@ -1,7 +1,7 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import { ReactNode } from 'react';
+import { CSSProperties, ReactNode } from 'react';
 
 interface CyberCardProps {
   children: ReactNode;
@@ -10,6 +10,7 @@ interface CyberCardProps {
   glow?: boolean;
   corners?: boolean;
   scanLine?: boolean;
+  style?: CSSProperties;
 }
 
 export function CyberCard({
@@ -19,6 +20,7 @@ export function CyberCard({
   glow = false,
   corners = false,
   scanLine = false,
+  style,
 }: CyberCardProps) {
   const variants = {
     default: 'card-cyber',
@@ -36,6 +38,7 @@ export function CyberCard({
         'p-6',
         className
       )}
+      style={style}
     >
       <div className="relative z-10">{children}</div>
     </div>
