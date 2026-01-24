@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
-import { useUserBetsQuery, useUserStatsQuery } from '@/hooks/useBetting';
+import { useUserBets, useUserStats } from '@/hooks/useBetting';
 import { useNFTBalance, useUserNFTs } from '@/hooks/useContracts';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -37,8 +37,8 @@ export default function ProfilePage() {
     }
   }, [isConnected, router]);
 
-  const { data: bets, isLoading: betsLoading } = useUserBetsQuery(address || '');
-  const { data: stats, isLoading: statsLoading } = useUserStatsQuery(address || '');
+  const { data: bets, isLoading: betsLoading } = useUserBets();
+  const { data: stats, isLoading: statsLoading } = useUserStats();
   const { balance: nftBalance } = useNFTBalance();
   const { data: userNFTs } = useUserNFTs();
 

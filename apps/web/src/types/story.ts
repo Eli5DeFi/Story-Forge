@@ -170,6 +170,15 @@ export interface UserStats {
   totalLosses: number;
   totalEarnings: string;
   winRate: number;
+  // Extended stats for profile page
+  wins?: number;
+  losses?: number;
+  pending?: number;
+  totalWinnings?: string;
+  totalWagered?: string;
+  netProfit?: string;
+  biggestWin?: string;
+  uniqueStories?: number;
 }
 
 export interface PlaceBetParams {

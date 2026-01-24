@@ -24,7 +24,7 @@
     "db:migrate": "npm run db:migrate -w apps/api"
   },
   "engines": {
-    "node": "20.x"
+    "node": ">=20"
   },
   "keywords": [
     "web3",

@@ -31,7 +31,7 @@ export function BettingPanel({ chapter }: BettingPanelProps) {
   const bettingEndsAt = chapter.bettingEndsAt
     ? new Date(chapter.bettingEndsAt)
     : null;
-  const isExpired = bettingEndsAt && bettingEndsAt < new Date();
+  const isExpired = bettingEndsAt ? bettingEndsAt < new Date() : false;
 
   // Calculate total pool across all outcomes
   const totalPool = outcomes?.reduce((sum, o) => {
@@ -61,11 +61,10 @@ export function BettingPanel({ chapter }: BettingPanelProps) {
 
           {/* Status Badge */}
           <div
-            className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-sm ${
-              isBettingOpen && !isExpired
+            className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-sm ${isBettingOpen && !isExpired
                 ? 'bg-green-500/20 text-green-400'
                 : 'bg-muted text-muted-foreground'
-            }`}
+              }`}
           >
             {isBettingOpen && !isExpired ? (
               <>
