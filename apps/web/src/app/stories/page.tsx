@@ -287,7 +287,7 @@ export default function StoriesPage() {
                     Read Now
                   </CyberButton>
                   {story.status === 'ACTIVE' && (
-                    <CyberButton size="sm" variant="outline" className="flex-1">
+                    <CyberButton size="sm" variant="ghost" className="flex-1">
                       Predict
                     </CyberButton>
                   )}
