@@ -390,7 +390,7 @@ export default function NFTsPage() {
 
       {/* Load More */}
       <div className="mt-8 text-center">
-        <CyberButton variant="outline">
+        <CyberButton variant="ghost">
           Load More NFTs
         </CyberButton>
       </div>
