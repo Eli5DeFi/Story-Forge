@@ -65,3 +65,4 @@ packages/contracts/coverage.json
 
 # Debug
 .debug
+.env*.local
