@@ -1,108 +1,95 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  Clock, 
-  Trophy, 
-  Coins, 
-  CheckCircle2, 
+import {
+  TrendingUp,
+  TrendingDown,
+  Clock,
+  Trophy,
+  Coins,
+  CheckCircle2,
   XCircle,
   Zap,
   Users,
-  ChevronRight
+  ChevronRight,
+  AlertCircle,
+  RefreshCw,
 } from 'lucide-react';
 import { CyberCard, CyberCardContent, CyberCardHeader } from '@/components/ui/cyber-card';
 import { CyberButton } from '@/components/ui/cyber-button';
 import { GlitchText } from '@/components/ui/glitch-text';
-
-// Mock betting data
-const ACTIVE_BETS = [
-  {
-    id: '1',
-    storyTitle: 'The Quantum Heist',
-    chapter: 7,
-    question: 'Will Zara betray the crew?',
-    options: [
-      { id: 'a', text: 'Yes, for the Corporation', odds: 2.4, pool: 12500 },
-      { id: 'b', text: 'No, she stays loyal', odds: 1.8, pool: 18200 },
-      { id: 'c', text: 'Partial betrayal with redemption', odds: 3.2, pool: 8300 },
-    ],
-    totalPool: 39000,
-    endsIn: '2h 34m',
-    bettors: 234,
-  },
-  {
-    id: '2',
-    storyTitle: 'Neon Shadows',
-    chapter: 12,
-    question: 'How will the final boss fight end?',
-    options: [
-      { id: 'a', text: 'Hero wins with sacrifice', odds: 1.9, pool: 25000 },
-      { id: 'b', text: 'Unexpected ally saves the day', odds: 2.8, pool: 15000 },
-      { id: 'c', text: 'Villain escapes', odds: 4.5, pool: 8000 },
-    ],
-    totalPool: 48000,
-    endsIn: '5h 12m',
-    bettors: 412,
-  },
-  {
-    id: '3',
-    storyTitle: 'Echoes of Tomorrow',
-    chapter: 4,
-    question: 'What artifact will be discovered?',
-    options: [
-      { id: 'a', text: 'Ancient AI Core', odds: 2.1, pool: 9800 },
-      { id: 'b', text: 'Time Crystal', odds: 2.5, pool: 7200 },
-      { id: 'c', text: 'Memory Archive', odds: 3.0, pool: 5500 },
-    ],
-    totalPool: 22500,
-    endsIn: '12h 45m',
-    bettors: 156,
-  },
-];
-
-const RESOLVED_BETS = [
-  {
-    id: '4',
-    storyTitle: 'The Quantum Heist',
-    chapter: 6,
-    question: 'Did Marcus survive the explosion?',
-    winningOption: 'Yes, barely - now cybernetic',
-    yourBet: { option: 'Yes, barely - now cybernetic', amount: 50, won: true, payout: 95 },
-    resolvedAt: '2 hours ago',
-  },
-  {
-    id: '5',
-    storyTitle: 'Neon Shadows',
-    chapter: 11,
-    question: 'Who was the informant?',
-    winningOption: 'The bartender',
-    yourBet: { option: 'The detective', amount: 100, won: false, payout: 0 },
-    resolvedAt: '1 day ago',
-  },
-  {
-    id: '6',
-    storyTitle: 'Stellar Requiem',
-    chapter: 8,
-    question: 'Which faction gains control?',
-    winningOption: 'The Syndicate',
-    yourBet: { option: 'The Syndicate', amount: 200, won: true, payout: 520 },
-    resolvedAt: '3 days ago',
-  },
-];
+import { useActivePools, useUserBets, useUserStats } from '@/hooks/useBetting';
+import { useAuth } from '@/context/AuthContext';
+import { formatDistanceToNow } from 'date-fns';
+import type { ActivePoolOutcome } from '@/types/story';
 
 export default function BettingPage() {
   const [activeTab, setActiveTab] = useState<'active' | 'resolved' | 'my-bets'>('active');
+
+  const { data: activePools, isLoading: poolsLoading, error: poolsError, refetch: refetchPools } = useActivePools();
+  const { data: userBets, isLoading: betsLoading } = useUserBets();
+  const { data: userStats, isLoading: statsLoading } = useUserStats();
+  const { isAuthenticated } = useAuth();
+
+  // Group active pools by chapter
+  const chapterMarkets = useMemo(() => {
+    if (!activePools) return [];
+    const grouped = new Map<string, { chapterId: string; storyTitle: string; storyId: string; chapterNumber: number; title: string; bettingEndsAt?: string; outcomes: ActivePoolOutcome[] }>();
+
+    for (const pool of activePools) {
+      const chapterId = pool.chapter?.id || pool.chapterId;
+      if (!grouped.has(chapterId)) {
+        grouped.set(chapterId, {
+          chapterId,
+          storyTitle: pool.chapter?.story?.title || 'Unknown Story',
+          storyId: pool.chapter?.story?.id || '',
+          chapterNumber: pool.chapter?.chapterNumber || 0,
+          title: pool.chapter?.title || `Chapter ${pool.chapter?.chapterNumber}`,
+          bettingEndsAt: pool.chapter?.bettingEndsAt,
+          outcomes: [],
+        });
+      }
+      grouped.get(chapterId)!.outcomes.push(pool);
+    }
+    return Array.from(grouped.values());
+  }, [activePools]);
+
+  // Calculate total pool from all active outcomes
+  const totalActivePool = useMemo(() => {
+    if (!activePools) return 0;
+    return activePools.reduce((sum, o) => sum + parseFloat(o.bettingPool?.totalAmount || '0'), 0);
+  }, [activePools]);
+
+  // Separate user bets into active vs resolved
+  const resolvedBets = useMemo(
+    () => (userBets ?? []).filter((b) => b.status === 'WON' || b.status === 'LOST'),
+    [userBets],
+  );
+  const pendingBets = useMemo(
+    () => (userBets ?? []).filter((b) => b.status === 'PENDING'),
+    [userBets],
+  );
+
+  if (poolsError) {
+    return (
+      <div className="container mx-auto px-4 py-20 text-center">
+        <AlertCircle className="mx-auto h-12 w-12 text-red-400" />
+        <h3 className="mt-4 text-lg font-semibold">Failed to load betting data</h3>
+        <p className="mt-2 text-muted-foreground">{(poolsError as Error).message}</p>
+        <CyberButton className="mt-4" onClick={() => refetchPools()}>
+          <RefreshCw className="mr-2 h-4 w-4" /> Retry
+        </CyberButton>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Header */}
       <div className="mb-8">
-        <GlitchText 
-          text="Prediction Markets" 
+        <GlitchText
+          text="Prediction Markets"
           className="font-fantasy text-4xl font-bold text-neon-blue"
         />
         <p className="mt-2 text-muted-foreground">
@@ -119,7 +106,13 @@ export default function BettingPage() {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Total Pool</p>
-              <p className="text-xl font-bold text-neon-blue">$109,500</p>
+              <p className="text-xl font-bold text-neon-blue">
+                {poolsLoading ? (
+                  <span className="inline-block h-6 w-16 animate-pulse rounded bg-void-800" />
+                ) : (
+                  `$${totalActivePool.toLocaleString()}`
+                )}
+              </p>
             </div>
           </div>
         </CyberCard>
@@ -129,8 +122,14 @@ export default function BettingPage() {
               <Zap className="h-5 w-5 text-neon-purple" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Active Bets</p>
-              <p className="text-xl font-bold text-neon-purple">24</p>
+              <p className="text-sm text-muted-foreground">Active Markets</p>
+              <p className="text-xl font-bold text-neon-purple">
+                {poolsLoading ? (
+                  <span className="inline-block h-6 w-8 animate-pulse rounded bg-void-800" />
+                ) : (
+                  chapterMarkets.length
+                )}
+              </p>
             </div>
           </div>
         </CyberCard>
@@ -141,7 +140,15 @@ export default function BettingPage() {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Your Winnings</p>
-              <p className="text-xl font-bold text-green-400">+$615</p>
+              <p className="text-xl font-bold text-green-400">
+                {statsLoading ? (
+                  <span className="inline-block h-6 w-16 animate-pulse rounded bg-void-800" />
+                ) : userStats ? (
+                  `+$${userStats.totalEarnings || '0'}`
+                ) : (
+                  '--'
+                )}
+              </p>
             </div>
           </div>
         </CyberCard>
@@ -152,7 +159,15 @@ export default function BettingPage() {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Win Rate</p>
-              <p className="text-xl font-bold text-amber-400">67%</p>
+              <p className="text-xl font-bold text-amber-400">
+                {statsLoading ? (
+                  <span className="inline-block h-6 w-12 animate-pulse rounded bg-void-800" />
+                ) : userStats ? (
+                  `${userStats.winRate.toFixed(0)}%`
+                ) : (
+                  '--'
+                )}
+              </p>
             </div>
           </div>
         </CyberCard>
@@ -162,9 +177,9 @@ export default function BettingPage() {
       <div className="mb-6 border-b border-neon-blue/20">
         <div className="flex gap-4">
           {[
-            { id: 'active', label: 'Active Markets', count: 24 },
-            { id: 'resolved', label: 'Resolved', count: 156 },
-            { id: 'my-bets', label: 'My Bets', count: 12 },
+            { id: 'active', label: 'Active Markets', count: chapterMarkets.length },
+            { id: 'resolved', label: 'Resolved', count: resolvedBets.length },
+            { id: 'my-bets', label: 'My Bets', count: pendingBets.length },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -187,123 +202,219 @@ export default function BettingPage() {
       {/* Active Markets */}
       {activeTab === 'active' && (
         <div className="space-y-6">
-          {ACTIVE_BETS.map((bet) => (
-            <CyberCard key={bet.id} variant="default" className="overflow-hidden">
-              <div className="border-b border-neon-blue/10 bg-neon-blue/5 p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Link 
-                      href={`/stories/${bet.id}`}
-                      className="text-sm text-neon-blue hover:underline"
-                    >
-                      {bet.storyTitle} • Chapter {bet.chapter}
-                    </Link>
-                    <h3 className="mt-1 text-lg font-semibold">{bet.question}</h3>
-                  </div>
-                  <div className="flex items-center gap-2 text-amber-400">
-                    <Clock className="h-4 w-4" />
-                    <span className="text-sm font-medium">{bet.endsIn}</span>
-                  </div>
+          {poolsLoading ? (
+            // Loading skeleton
+            [1, 2, 3].map((i) => (
+              <CyberCard key={i} variant="default" className="overflow-hidden">
+                <div className="border-b border-neon-blue/10 bg-neon-blue/5 p-4">
+                  <div className="h-4 w-40 animate-pulse rounded bg-void-800" />
+                  <div className="mt-2 h-6 w-64 animate-pulse rounded bg-void-800" />
                 </div>
-              </div>
-              <CyberCardContent className="p-4">
-                <div className="space-y-3">
-                  {bet.options.map((option) => (
-                    <div
-                      key={option.id}
-                      className="flex items-center justify-between rounded-lg border border-neon-blue/20 bg-void-950/50 p-3 transition-colors hover:border-neon-blue/50 hover:bg-neon-blue/5"
-                    >
-                      <div className="flex-1">
-                        <p className="font-medium">{option.text}</p>
-                        <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-void-900">
-                          <div
-                            className="h-full bg-gradient-to-r from-neon-blue to-neon-purple"
-                            style={{ width: `${(option.pool / bet.totalPool) * 100}%` }}
-                          />
-                        </div>
-                      </div>
-                      <div className="ml-4 text-right">
-                        <p className="text-lg font-bold text-neon-blue">{option.odds}x</p>
-                        <p className="text-xs text-muted-foreground">${option.pool.toLocaleString()}</p>
-                      </div>
-                      <CyberButton size="sm" className="ml-4">
-                        Bet
-                      </CyberButton>
-                    </div>
+                <CyberCardContent className="space-y-3 p-4">
+                  {[1, 2, 3].map((j) => (
+                    <div key={j} className="h-14 animate-pulse rounded-lg bg-void-800" />
                   ))}
-                </div>
-                <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
-                  <div className="flex items-center gap-4">
-                    <span className="flex items-center gap-1">
-                      <Users className="h-4 w-4" />
-                      {bet.bettors} bettors
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Coins className="h-4 w-4" />
-                      ${bet.totalPool.toLocaleString()} pool
-                    </span>
+                </CyberCardContent>
+              </CyberCard>
+            ))
+          ) : chapterMarkets.length === 0 ? (
+            <div className="py-20 text-center">
+              <Coins className="mx-auto h-12 w-12 text-muted-foreground" />
+              <h3 className="mt-4 text-lg font-semibold">No Active Markets</h3>
+              <p className="mt-2 text-muted-foreground">
+                There are no active prediction markets right now. Check back when new chapters are published.
+              </p>
+            </div>
+          ) : (
+            chapterMarkets.map((market) => {
+              const totalPool = market.outcomes.reduce(
+                (sum, o) => sum + parseFloat(o.bettingPool?.totalAmount || '0'),
+                0,
+              );
+              const totalBettors = market.outcomes.reduce(
+                (sum, o) => sum + (o.bettingPool?._count?.bets || 0),
+                0,
+              );
+
+              return (
+                <CyberCard key={market.chapterId} variant="default" className="overflow-hidden">
+                  <div className="border-b border-neon-blue/10 bg-neon-blue/5 p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Link
+                          href={`/stories/${market.storyId}`}
+                          className="text-sm text-neon-blue hover:underline"
+                        >
+                          {market.storyTitle} &bull; Chapter {market.chapterNumber}
+                        </Link>
+                        <h3 className="mt-1 text-lg font-semibold">{market.title}</h3>
+                      </div>
+                      {market.bettingEndsAt && (
+                        <div className="flex items-center gap-2 text-amber-400">
+                          <Clock className="h-4 w-4" />
+                          <span className="text-sm font-medium">
+                            {formatDistanceToNow(new Date(market.bettingEndsAt), { addSuffix: true })}
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <Link 
-                    href={`/stories/${bet.id}`}
-                    className="flex items-center gap-1 text-neon-blue hover:underline"
-                  >
-                    Read Story <ChevronRight className="h-4 w-4" />
-                  </Link>
-                </div>
-              </CyberCardContent>
-            </CyberCard>
-          ))}
+                  <CyberCardContent className="p-4">
+                    <div className="space-y-3">
+                      {market.outcomes.map((outcome) => {
+                        const poolAmt = parseFloat(outcome.bettingPool?.totalAmount || '0');
+                        const odds = totalPool > 0 && poolAmt > 0 ? (totalPool / poolAmt).toFixed(1) : '-.--';
+                        const pct = totalPool > 0 ? (poolAmt / totalPool) * 100 : 0;
+
+                        return (
+                          <div
+                            key={outcome.id}
+                            className="flex items-center justify-between rounded-lg border border-neon-blue/20 bg-void-950/50 p-3 transition-colors hover:border-neon-blue/50 hover:bg-neon-blue/5"
+                          >
+                            <div className="flex-1">
+                              <p className="font-medium">{outcome.teaserText}</p>
+                              <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-void-900">
+                                <div
+                                  className="h-full bg-gradient-to-r from-neon-blue to-neon-purple"
+                                  style={{ width: `${pct}%` }}
+                                />
+                              </div>
+                            </div>
+                            <div className="ml-4 text-right">
+                              <p className="text-lg font-bold text-neon-blue">{odds}x</p>
+                              <p className="text-xs text-muted-foreground">${poolAmt.toLocaleString()}</p>
+                            </div>
+                            <CyberButton size="sm" className="ml-4">
+                              Bet
+                            </CyberButton>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
+                      <div className="flex items-center gap-4">
+                        <span className="flex items-center gap-1">
+                          <Users className="h-4 w-4" />
+                          {totalBettors} bettors
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Coins className="h-4 w-4" />
+                          ${totalPool.toLocaleString()} pool
+                        </span>
+                      </div>
+                      <Link
+                        href={`/stories/${market.storyId}`}
+                        className="flex items-center gap-1 text-neon-blue hover:underline"
+                      >
+                        Read Story <ChevronRight className="h-4 w-4" />
+                      </Link>
+                    </div>
+                  </CyberCardContent>
+                </CyberCard>
+              );
+            })
+          )}
         </div>
       )}
 
       {/* Resolved Bets */}
       {activeTab === 'resolved' && (
         <div className="space-y-4">
-          {RESOLVED_BETS.map((bet) => (
-            <CyberCard key={bet.id} variant="glass" className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">
-                    {bet.storyTitle} • Chapter {bet.chapter}
-                  </p>
-                  <h3 className="mt-1 font-semibold">{bet.question}</h3>
-                  <p className="mt-2 flex items-center gap-2 text-sm">
-                    <CheckCircle2 className="h-4 w-4 text-green-400" />
-                    <span className="text-green-400">Winner:</span>
-                    <span>{bet.winningOption}</span>
-                  </p>
-                </div>
-                <div className="text-right">
-                  {bet.yourBet.won ? (
-                    <div className="flex items-center gap-2 text-green-400">
-                      <TrendingUp className="h-5 w-5" />
-                      <span className="text-xl font-bold">+${bet.yourBet.payout}</span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2 text-red-400">
-                      <TrendingDown className="h-5 w-5" />
-                      <span className="text-xl font-bold">-${bet.yourBet.amount}</span>
-                    </div>
-                  )}
-                  <p className="mt-1 text-xs text-muted-foreground">{bet.resolvedAt}</p>
-                </div>
-              </div>
+          {!isAuthenticated ? (
+            <CyberCard variant="glass" className="p-6 text-center">
+              <Coins className="mx-auto h-12 w-12 text-neon-blue/50" />
+              <h3 className="mt-4 text-lg font-semibold">Connect Wallet to View Resolved Bets</h3>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Connect your wallet and sign in to see your resolved predictions
+              </p>
             </CyberCard>
-          ))}
+          ) : betsLoading ? (
+            [1, 2, 3].map((i) => (
+              <div key={i} className="h-20 animate-pulse rounded-xl bg-void-800" />
+            ))
+          ) : resolvedBets.length === 0 ? (
+            <div className="py-12 text-center">
+              <CheckCircle2 className="mx-auto h-10 w-10 text-muted-foreground" />
+              <p className="mt-3 text-muted-foreground">No resolved bets yet</p>
+            </div>
+          ) : (
+            resolvedBets.map((bet) => (
+              <CyberCard key={bet.id} variant="glass" className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">
+                      Bet #{bet.id.slice(0, 8)}
+                    </p>
+                    <p className="mt-1 font-semibold">${bet.amount} wagered</p>
+                  </div>
+                  <div className="text-right">
+                    {bet.status === 'WON' ? (
+                      <div className="flex items-center gap-2 text-green-400">
+                        <TrendingUp className="h-5 w-5" />
+                        <span className="text-xl font-bold">+${bet.payout || '0'}</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 text-red-400">
+                        <TrendingDown className="h-5 w-5" />
+                        <span className="text-xl font-bold">-${bet.amount}</span>
+                      </div>
+                    )}
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {formatDistanceToNow(new Date(bet.createdAt), { addSuffix: true })}
+                    </p>
+                  </div>
+                </div>
+              </CyberCard>
+            ))
+          )}
         </div>
       )}
 
       {/* My Bets */}
       {activeTab === 'my-bets' && (
         <div className="space-y-4">
-          <CyberCard variant="glass" className="p-6 text-center">
-            <Coins className="mx-auto h-12 w-12 text-neon-blue/50" />
-            <h3 className="mt-4 text-lg font-semibold">Connect Wallet to View Your Bets</h3>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Connect your wallet to see your betting history and pending predictions
-            </p>
-            <CyberButton className="mt-4">Connect Wallet</CyberButton>
-          </CyberCard>
+          {!isAuthenticated ? (
+            <CyberCard variant="glass" className="p-6 text-center">
+              <Coins className="mx-auto h-12 w-12 text-neon-blue/50" />
+              <h3 className="mt-4 text-lg font-semibold">Connect Wallet to View Your Bets</h3>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Connect your wallet to see your betting history and pending predictions
+              </p>
+              <CyberButton className="mt-4">Connect Wallet</CyberButton>
+            </CyberCard>
+          ) : betsLoading ? (
+            [1, 2, 3].map((i) => (
+              <div key={i} className="h-20 animate-pulse rounded-xl bg-void-800" />
+            ))
+          ) : pendingBets.length === 0 ? (
+            <div className="py-12 text-center">
+              <Clock className="mx-auto h-10 w-10 text-muted-foreground" />
+              <h3 className="mt-3 text-lg font-semibold">No Pending Bets</h3>
+              <p className="mt-2 text-muted-foreground">
+                You don&apos;t have any pending predictions. Browse active markets to place your first bet.
+              </p>
+            </div>
+          ) : (
+            pendingBets.map((bet) => (
+              <CyberCard key={bet.id} variant="glass" className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">
+                      Bet #{bet.id.slice(0, 8)}
+                    </p>
+                    <p className="mt-1 font-semibold">${bet.amount} wagered</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {formatDistanceToNow(new Date(bet.createdAt), { addSuffix: true })}
+                    </p>
+                  </div>
+                  <span className="flex items-center gap-1 rounded-full bg-amber-500/20 px-3 py-1 text-sm text-amber-400">
+                    <Clock className="h-3 w-3" />
+                    Pending
+                  </span>
+                </div>
+              </CyberCard>
+            ))
+          )}
         </div>
       )}
     </div>

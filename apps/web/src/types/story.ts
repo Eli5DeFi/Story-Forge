@@ -186,3 +186,42 @@ export interface PlaceBetParams {
   amount: string;
   token: 'USDC' | 'USDT';
 }
+
+export interface LeaderboardEntry {
+  walletAddress: string;
+  username?: string;
+  totalBets: number;
+  totalWins: number;
+  totalLosses: number;
+  totalWon: string;
+  winRate: number;
+  winStreak: number;
+}
+
+export type ActivePoolOutcome = Outcome & {
+  chapter: {
+    id: string;
+    chapterNumber: number;
+    title: string;
+    bettingEndsAt?: string;
+    story: { id: string; title: string };
+  };
+};
+
+export interface StoryNFTs {
+  characters: Character[];
+  items: Item[];
+  locations: Location[];
+  monsters: Monster[];
+}
+
+export interface NFTStats {
+  totalEntities: number;
+  totalMinted: number;
+  entityCounts: {
+    characters: number;
+    items: number;
+    locations: number;
+    monsters: number;
+  };
+}
