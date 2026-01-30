@@ -1,165 +1,129 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { 
-  Sparkles, 
-  Filter, 
-  Grid3X3, 
+import {
+  Sparkles,
+  Filter,
+  Grid3X3,
   LayoutGrid,
   ExternalLink,
   Heart,
   Eye,
   Clock,
   Coins,
-  TrendingUp
+  TrendingUp,
+  AlertCircle,
+  RefreshCw,
+  BookOpen,
 } from 'lucide-react';
 import { CyberCard, CyberCardContent } from '@/components/ui/cyber-card';
 import { CyberButton } from '@/components/ui/cyber-button';
 import { GlitchText } from '@/components/ui/glitch-text';
+import { useStories } from '@/hooks/useStory';
+import { useStoryNFTs, useNFTStats } from '@/hooks/useNFTs';
+import type { Character, Item, Location, Monster } from '@/types/story';
 
-// Mock NFT data
-const NFTS = [
-  {
-    id: '1',
-    name: 'Zara Kaine - Genesis',
-    story: 'The Quantum Heist',
-    chapter: 1,
-    type: 'Character',
-    rarity: 'Legendary',
-    image: null,
-    price: 0.5,
-    lastSale: 0.45,
-    likes: 234,
-    views: 1205,
-    owner: '0x1234...5678',
-    mintedAt: '2 days ago',
-  },
-  {
-    id: '2',
-    name: 'Neo Tokyo Skyline',
-    story: 'The Quantum Heist',
-    chapter: 3,
-    type: 'Scene',
-    rarity: 'Epic',
-    image: null,
-    price: 0.25,
-    lastSale: 0.22,
-    likes: 156,
-    views: 892,
-    owner: '0xabcd...efgh',
-    mintedAt: '1 week ago',
-  },
-  {
-    id: '3',
-    name: 'The Architects Mask',
-    story: 'Neon Shadows',
-    chapter: 8,
-    type: 'Item',
-    rarity: 'Mythic',
-    image: null,
-    price: 1.2,
-    lastSale: 0.95,
-    likes: 412,
-    views: 2341,
-    owner: '0x9876...5432',
-    mintedAt: '3 days ago',
-  },
-  {
-    id: '4',
-    name: 'Stellar Core Fragment',
-    story: 'Stellar Requiem',
-    chapter: 5,
-    type: 'Artifact',
-    rarity: 'Mythic',
-    image: null,
-    price: 2.5,
-    lastSale: 2.1,
-    likes: 567,
-    views: 3456,
-    owner: '0xfedc...ba98',
-    mintedAt: '5 hours ago',
-  },
-  {
-    id: '5',
-    name: 'Marcus Chen - Reborn',
-    story: 'The Quantum Heist',
-    chapter: 6,
-    type: 'Character',
-    rarity: 'Epic',
-    image: null,
-    price: 0.35,
-    lastSale: 0.30,
-    likes: 189,
-    views: 756,
-    owner: '0x2468...1357',
-    mintedAt: '4 days ago',
-  },
-  {
-    id: '6',
-    name: 'The Betrayal',
-    story: 'The Quantum Heist',
-    chapter: 7,
-    type: 'Moment',
-    rarity: 'Legendary',
-    image: null,
-    price: 0.8,
-    lastSale: null,
-    likes: 78,
-    views: 234,
-    owner: 'Unclaimed',
-    mintedAt: 'Just now',
-  },
-  {
-    id: '7',
-    name: 'Void Station Alpha',
-    story: 'Stellar Requiem',
-    chapter: 2,
-    type: 'Scene',
-    rarity: 'Rare',
-    image: null,
-    price: 0.15,
-    lastSale: 0.12,
-    likes: 98,
-    views: 445,
-    owner: '0x1357...2468',
-    mintedAt: '2 weeks ago',
-  },
-  {
-    id: '8',
-    name: 'Neural Blade',
-    story: 'Neon Shadows',
-    chapter: 4,
-    type: 'Item',
-    rarity: 'Epic',
-    image: null,
-    price: 0.4,
-    lastSale: 0.38,
-    likes: 203,
-    views: 1023,
-    owner: '0xaaaa...bbbb',
-    mintedAt: '6 days ago',
-  },
-];
+type EntityType = 'character' | 'item' | 'location' | 'monster';
 
-const COLLECTIONS = [
-  { id: 'all', name: 'All NFTs', count: 156 },
-  { id: 'quantum', name: 'The Quantum Heist', count: 48 },
-  { id: 'neon', name: 'Neon Shadows', count: 36 },
-  { id: 'stellar', name: 'Stellar Requiem', count: 42 },
-  { id: 'echoes', name: 'Echoes of Tomorrow', count: 30 },
-];
+interface FlatEntity {
+  id: string;
+  name: string;
+  description: string;
+  imageUrl?: string;
+  entityType: EntityType;
+  rarity?: string;
+  type?: string;
+  firstAppearance: number;
+  nftTokenId?: number;
+}
 
-const TYPES = ['All', 'Character', 'Scene', 'Item', 'Moment', 'Artifact'];
+const TYPES = ['All', 'Character', 'Item', 'Location', 'Monster'];
 const RARITIES = ['All', 'Common', 'Rare', 'Epic', 'Legendary', 'Mythic'];
 
+function flattenEntities(data: {
+  characters: Character[];
+  items: Item[];
+  locations: Location[];
+  monsters: Monster[];
+} | undefined): FlatEntity[] {
+  if (!data) return [];
+  const entities: FlatEntity[] = [];
+
+  for (const c of data.characters) {
+    entities.push({
+      id: c.id,
+      name: c.name,
+      description: c.description,
+      imageUrl: c.imageUrl,
+      entityType: 'character',
+      firstAppearance: c.firstAppearance,
+      nftTokenId: c.nftTokenId,
+    });
+  }
+  for (const i of data.items) {
+    entities.push({
+      id: i.id,
+      name: i.name,
+      description: i.description,
+      imageUrl: i.imageUrl,
+      entityType: 'item',
+      rarity: i.rarity,
+      type: i.type,
+      firstAppearance: i.firstAppearance,
+      nftTokenId: i.nftTokenId,
+    });
+  }
+  for (const l of data.locations) {
+    entities.push({
+      id: l.id,
+      name: l.name,
+      description: l.description,
+      imageUrl: l.imageUrl,
+      entityType: 'location',
+      type: l.type,
+      firstAppearance: l.firstAppearance,
+    });
+  }
+  for (const m of data.monsters) {
+    entities.push({
+      id: m.id,
+      name: m.name,
+      description: m.description,
+      imageUrl: m.imageUrl,
+      entityType: 'monster',
+      firstAppearance: m.firstAppearance,
+      nftTokenId: m.nftTokenId,
+    });
+  }
+  return entities;
+}
+
 export default function NFTsPage() {
-  const [selectedCollection, setSelectedCollection] = useState('all');
+  const [selectedStory, setSelectedStory] = useState('');
   const [selectedType, setSelectedType] = useState('All');
   const [selectedRarity, setSelectedRarity] = useState('All');
   const [viewMode, setViewMode] = useState<'grid' | 'large'>('grid');
 
-  const getRarityColor = (rarity: string) => {
+  // Load stories for collection selector
+  const { data: storiesData } = useStories();
+  const stories = storiesData?.stories ?? [];
+
+  // Load NFT entities for selected story
+  const { data: nftData, isLoading: nftsLoading, error: nftsError, refetch: refetchNFTs } = useStoryNFTs(selectedStory);
+  const { data: nftStats, isLoading: statsLoading } = useNFTStats(selectedStory);
+
+  const entities = useMemo(() => flattenEntities(nftData), [nftData]);
+
+  const filteredEntities = useMemo(() => {
+    return entities.filter((e) => {
+      const typeMatch = selectedType === 'All' || e.entityType.toLowerCase() === selectedType.toLowerCase();
+      const rarityMatch = selectedRarity === 'All' || (e.rarity && e.rarity === selectedRarity);
+      return typeMatch && rarityMatch;
+    });
+  }, [entities, selectedType, selectedRarity]);
+
+  const getRarityColor = (rarity?: string) => {
     switch (rarity) {
       case 'Mythic':
         return 'from-amber-500 to-orange-500 text-amber-400 border-amber-400/50';
@@ -174,7 +138,7 @@ export default function NFTsPage() {
     }
   };
 
-  const getRarityBg = (rarity: string) => {
+  const getRarityBg = (rarity?: string) => {
     switch (rarity) {
       case 'Mythic':
         return 'bg-gradient-to-br from-amber-500/30 via-orange-500/20 to-red-500/30';
@@ -185,16 +149,18 @@ export default function NFTsPage() {
       case 'Rare':
         return 'bg-gradient-to-br from-green-500/30 via-emerald-500/20 to-green-500/30';
       default:
-        return 'bg-gradient-to-br from-gray-500/30 to-gray-600/30';
+        return 'bg-gradient-to-br from-neon-blue/30 via-neon-purple/20 to-neon-blue/30';
     }
   };
+
+  const entityTypeLabel = (t: EntityType) => t.charAt(0).toUpperCase() + t.slice(1);
 
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Header */}
       <div className="mb-8">
-        <GlitchText 
-          text="NFT Gallery" 
+        <GlitchText
+          text="NFT Gallery"
           className="font-fantasy text-4xl font-bold text-neon-blue"
         />
         <p className="mt-2 text-muted-foreground">
@@ -210,8 +176,10 @@ export default function NFTsPage() {
               <Sparkles className="h-5 w-5 text-neon-blue" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Total NFTs</p>
-              <p className="text-xl font-bold">156</p>
+              <p className="text-sm text-muted-foreground">Total Entities</p>
+              <p className="text-xl font-bold">
+                {statsLoading || !selectedStory ? '--' : (nftStats?.totalEntities ?? entities.length)}
+              </p>
             </div>
           </div>
         </CyberCard>
@@ -221,8 +189,10 @@ export default function NFTsPage() {
               <Coins className="h-5 w-5 text-neon-purple" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Floor Price</p>
-              <p className="text-xl font-bold">0.12 ETH</p>
+              <p className="text-sm text-muted-foreground">Total Minted</p>
+              <p className="text-xl font-bold">
+                {statsLoading || !selectedStory ? '--' : (nftStats?.totalMinted ?? 0)}
+              </p>
             </div>
           </div>
         </CyberCard>
@@ -232,38 +202,52 @@ export default function NFTsPage() {
               <TrendingUp className="h-5 w-5 text-green-400" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Volume (24h)</p>
-              <p className="text-xl font-bold">12.5 ETH</p>
+              <p className="text-sm text-muted-foreground">Characters</p>
+              <p className="text-xl font-bold">
+                {statsLoading || !selectedStory ? '--' : (nftStats?.entityCounts?.characters ?? 0)}
+              </p>
             </div>
           </div>
         </CyberCard>
         <CyberCard variant="glass" className="p-4">
           <div className="flex items-center gap-3">
             <div className="rounded-lg bg-amber-500/20 p-2">
-              <Heart className="h-5 w-5 text-amber-400" />
+              <Sparkles className="h-5 w-5 text-amber-400" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Unique Owners</p>
-              <p className="text-xl font-bold">89</p>
+              <p className="text-sm text-muted-foreground">Items</p>
+              <p className="text-xl font-bold">
+                {statsLoading || !selectedStory ? '--' : (nftStats?.entityCounts?.items ?? 0)}
+              </p>
             </div>
           </div>
         </CyberCard>
       </div>
 
-      {/* Filters */}
+      {/* Collection Selector */}
       <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="flex flex-wrap gap-2">
-          {COLLECTIONS.map((collection) => (
+          <button
+            onClick={() => setSelectedStory('')}
+            className={`rounded-lg px-3 py-1.5 text-sm transition-all ${
+              !selectedStory
+                ? 'bg-neon-blue text-void-950'
+                : 'bg-void-900 text-muted-foreground hover:bg-void-800'
+            }`}
+          >
+            Select a Story
+          </button>
+          {stories.map((story) => (
             <button
-              key={collection.id}
-              onClick={() => setSelectedCollection(collection.id)}
+              key={story.id}
+              onClick={() => setSelectedStory(story.id)}
               className={`rounded-lg px-3 py-1.5 text-sm transition-all ${
-                selectedCollection === collection.id
+                selectedStory === story.id
                   ? 'bg-neon-blue text-void-950'
                   : 'bg-void-900 text-muted-foreground hover:bg-void-800'
               }`}
             >
-              {collection.name} ({collection.count})
+              {story.title}
             </button>
           ))}
         </div>
@@ -284,116 +268,148 @@ export default function NFTsPage() {
       </div>
 
       {/* Type and Rarity Filters */}
-      <div className="mb-6 flex flex-wrap gap-4">
-        <div className="flex items-center gap-2">
-          <Filter className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">Type:</span>
-          <select
-            value={selectedType}
-            onChange={(e) => setSelectedType(e.target.value)}
-            className="rounded border border-neon-blue/30 bg-void-950 px-2 py-1 text-sm"
-          >
-            {TYPES.map((type) => (
-              <option key={type} value={type}>{type}</option>
-            ))}
-          </select>
+      {selectedStory && (
+        <div className="mb-6 flex flex-wrap gap-4">
+          <div className="flex items-center gap-2">
+            <Filter className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">Type:</span>
+            <select
+              value={selectedType}
+              onChange={(e) => setSelectedType(e.target.value)}
+              className="rounded border border-neon-blue/30 bg-void-950 px-2 py-1 text-sm"
+            >
+              {TYPES.map((type) => (
+                <option key={type} value={type}>{type}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Rarity:</span>
+            <select
+              value={selectedRarity}
+              onChange={(e) => setSelectedRarity(e.target.value)}
+              className="rounded border border-neon-blue/30 bg-void-950 px-2 py-1 text-sm"
+            >
+              {RARITIES.map((rarity) => (
+                <option key={rarity} value={rarity}>{rarity}</option>
+              ))}
+            </select>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">Rarity:</span>
-          <select
-            value={selectedRarity}
-            onChange={(e) => setSelectedRarity(e.target.value)}
-            className="rounded border border-neon-blue/30 bg-void-950 px-2 py-1 text-sm"
-          >
-            {RARITIES.map((rarity) => (
-              <option key={rarity} value={rarity}>{rarity}</option>
-            ))}
-          </select>
+      )}
+
+      {/* No story selected */}
+      {!selectedStory && (
+        <div className="py-20 text-center">
+          <BookOpen className="mx-auto h-12 w-12 text-muted-foreground" />
+          <h3 className="mt-4 text-lg font-semibold">Select a Story</h3>
+          <p className="mt-2 text-muted-foreground">
+            Choose a story above to browse its mintable entities.
+          </p>
         </div>
-      </div>
+      )}
+
+      {/* Error State */}
+      {nftsError && (
+        <div className="py-20 text-center">
+          <AlertCircle className="mx-auto h-12 w-12 text-red-400" />
+          <h3 className="mt-4 text-lg font-semibold">Failed to load NFTs</h3>
+          <p className="mt-2 text-muted-foreground">{(nftsError as Error).message}</p>
+          <CyberButton className="mt-4" onClick={() => refetchNFTs()}>
+            <RefreshCw className="mr-2 h-4 w-4" /> Retry
+          </CyberButton>
+        </div>
+      )}
+
+      {/* Loading State */}
+      {selectedStory && nftsLoading && (
+        <div className={`grid gap-4 ${viewMode === 'grid' ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4' : 'grid-cols-1 md:grid-cols-2'}`}>
+          {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+            <CyberCard key={i} variant="glass" className="overflow-hidden">
+              <div className="aspect-square animate-pulse bg-void-800" />
+              <CyberCardContent className="p-3">
+                <div className="h-4 w-3/4 animate-pulse rounded bg-void-800" />
+                <div className="mt-2 h-3 w-1/2 animate-pulse rounded bg-void-800" />
+              </CyberCardContent>
+            </CyberCard>
+          ))}
+        </div>
+      )}
 
       {/* NFT Grid */}
-      <div className={`grid gap-4 ${viewMode === 'grid' ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4' : 'grid-cols-1 md:grid-cols-2'}`}>
-        {NFTS.map((nft) => (
-          <CyberCard 
-            key={nft.id} 
-            variant="glass" 
-            className="group overflow-hidden transition-all hover:border-neon-blue/50"
-          >
-            {/* Image */}
-            <div className={`relative aspect-square ${getRarityBg(nft.rarity)}`}>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <Sparkles className="h-16 w-16 text-white/20" />
-              </div>
-              {/* Rarity Badge */}
-              <div className="absolute left-2 top-2">
-                <span className={`rounded border px-2 py-0.5 text-xs font-medium ${getRarityColor(nft.rarity)}`}>
-                  {nft.rarity}
-                </span>
-              </div>
-              {/* Quick Actions */}
-              <div className="absolute right-2 top-2 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                <button className="rounded-full bg-void-950/80 p-1.5 text-white hover:bg-void-900">
-                  <Heart className="h-4 w-4" />
-                </button>
-                <button className="rounded-full bg-void-950/80 p-1.5 text-white hover:bg-void-900">
-                  <ExternalLink className="h-4 w-4" />
-                </button>
-              </div>
-              {/* Type Badge */}
-              <div className="absolute bottom-2 left-2">
-                <span className="rounded bg-void-950/80 px-2 py-0.5 text-xs text-white">
-                  {nft.type}
-                </span>
-              </div>
+      {selectedStory && !nftsLoading && !nftsError && (
+        <>
+          {filteredEntities.length === 0 ? (
+            <div className="py-20 text-center">
+              <Sparkles className="mx-auto h-12 w-12 text-muted-foreground" />
+              <h3 className="mt-4 text-lg font-semibold">No entities found</h3>
+              <p className="mt-2 text-muted-foreground">
+                No mintable entities match your filters.
+              </p>
             </div>
-
-            {/* Details */}
-            <CyberCardContent className="p-3">
-              <h3 className="font-semibold text-sm truncate">{nft.name}</h3>
-              <p className="text-xs text-neon-blue truncate">{nft.story} • Ch.{nft.chapter}</p>
-              
-              <div className="mt-2 flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-muted-foreground">Price</p>
-                  <p className="font-bold text-neon-blue">{nft.price} ETH</p>
-                </div>
-                {nft.lastSale && (
-                  <div className="text-right">
-                    <p className="text-xs text-muted-foreground">Last</p>
-                    <p className="text-sm text-muted-foreground">{nft.lastSale} ETH</p>
+          ) : (
+            <div className={`grid gap-4 ${viewMode === 'grid' ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4' : 'grid-cols-1 md:grid-cols-2'}`}>
+              {filteredEntities.map((entity) => (
+                <CyberCard
+                  key={entity.id}
+                  variant="glass"
+                  className="group overflow-hidden transition-all hover:border-neon-blue/50"
+                >
+                  {/* Image */}
+                  <div className={`relative aspect-square ${getRarityBg(entity.rarity)}`}>
+                    {entity.imageUrl ? (
+                      <img src={entity.imageUrl} alt={entity.name} className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <Sparkles className="h-16 w-16 text-white/20" />
+                      </div>
+                    )}
+                    {/* Rarity Badge */}
+                    {entity.rarity && (
+                      <div className="absolute left-2 top-2">
+                        <span className={`rounded border px-2 py-0.5 text-xs font-medium ${getRarityColor(entity.rarity)}`}>
+                          {entity.rarity}
+                        </span>
+                      </div>
+                    )}
+                    {/* Type Badge */}
+                    <div className="absolute bottom-2 left-2">
+                      <span className="rounded bg-void-950/80 px-2 py-0.5 text-xs text-white">
+                        {entityTypeLabel(entity.entityType)}
+                      </span>
+                    </div>
+                    {/* Minted indicator */}
+                    {entity.nftTokenId != null && (
+                      <div className="absolute right-2 top-2">
+                        <span className="rounded-full bg-green-500/80 px-2 py-0.5 text-xs text-white">
+                          Minted
+                        </span>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
 
-              <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
-                <div className="flex items-center gap-2">
-                  <span className="flex items-center gap-1">
-                    <Heart className="h-3 w-3" /> {nft.likes}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Eye className="h-3 w-3" /> {nft.views}
-                  </span>
-                </div>
-                <span className="flex items-center gap-1">
-                  <Clock className="h-3 w-3" /> {nft.mintedAt}
-                </span>
-              </div>
+                  {/* Details */}
+                  <CyberCardContent className="p-3">
+                    <h3 className="font-semibold text-sm truncate">{entity.name}</h3>
+                    <p className="text-xs text-muted-foreground truncate">
+                      Ch. {entity.firstAppearance}
+                      {entity.type ? ` • ${entity.type}` : ''}
+                    </p>
 
-              <CyberButton size="sm" className="mt-3 w-full">
-                {nft.owner === 'Unclaimed' ? 'Mint Now' : 'Buy'}
-              </CyberButton>
-            </CyberCardContent>
-          </CyberCard>
-        ))}
-      </div>
+                    <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
+                      {entity.description}
+                    </p>
 
-      {/* Load More */}
-      <div className="mt-8 text-center">
-        <CyberButton variant="ghost">
-          Load More NFTs
-        </CyberButton>
-      </div>
+                    <CyberButton size="sm" className="mt-3 w-full">
+                      {entity.nftTokenId != null ? 'View NFT' : 'Mint'}
+                    </CyberButton>
+                  </CyberCardContent>
+                </CyberCard>
+              ))}
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }

@@ -29,10 +29,7 @@ export function BetModal({ outcome, totalPool, onClose }: BetModalProps) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
-  // TODO: Replace with actual auth token from context
-  const accessToken = '';
-
-  const placeBet = usePlaceBet(accessToken);
+  const placeBet = usePlaceBet();
   const { potentialWinnings, share } = useCalculatePotentialWinnings(outcome, amount);
 
   const handleAmountChange = (value: string) => {

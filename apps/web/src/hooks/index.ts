@@ -4,3 +4,5 @@ export * from './useBetting';
 export * from './useCompendium';
 export * from './useContracts';
 export * from './useSocket';
+export * from './useLeaderboard';
+export * from './useNFTs';

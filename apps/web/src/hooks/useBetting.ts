@@ -3,12 +3,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAccount } from 'wagmi';
 import * as api from '@/lib/api';
+import { useAuth } from '@/context/AuthContext';
 import type { Outcome, Bet, UserStats } from '@/types/story';
 
 // Query keys
 export const bettingKeys = {
   all: ['betting'] as const,
   outcomes: (chapterId: string) => [...bettingKeys.all, 'outcomes', chapterId] as const,
+  activePools: (storyId?: string) => [...bettingKeys.all, 'activePools', storyId] as const,
   userBets: (walletAddress: string) => [...bettingKeys.all, 'user', walletAddress] as const,
   userStats: (walletAddress: string) => [...bettingKeys.userBets(walletAddress), 'stats'] as const,
 };
@@ -22,29 +24,40 @@ export function useOutcomes(chapterId: string) {
   });
 }
 
-export function useUserBets(accessToken?: string) {
+export function useActivePools(storyId?: string) {
+  return useQuery({
+    queryKey: bettingKeys.activePools(storyId),
+    queryFn: () => api.getActivePools(storyId),
+    refetchInterval: 30000,
+  });
+}
+
+export function useUserBets() {
   const { address } = useAccount();
+  const { accessToken } = useAuth();
 
   return useQuery({
     queryKey: bettingKeys.userBets(address || ''),
-    queryFn: () => api.getUserBets(address!, accessToken!),
+    queryFn: () => api.getUserBets(accessToken!),
     enabled: !!address && !!accessToken,
   });
 }
 
-export function useUserStats(accessToken?: string) {
+export function useUserStats() {
   const { address } = useAccount();
+  const { accessToken } = useAuth();
 
   return useQuery({
     queryKey: bettingKeys.userStats(address || ''),
-    queryFn: () => api.getUserStats(address!, accessToken!),
+    queryFn: () => api.getUserStats(accessToken!),
     enabled: !!address && !!accessToken,
   });
 }
 
-export function usePlaceBet(accessToken?: string) {
+export function usePlaceBet() {
   const queryClient = useQueryClient();
   const { address } = useAccount();
+  const { accessToken } = useAuth();
 
   return useMutation({
     mutationFn: async ({
@@ -65,7 +78,7 @@ export function usePlaceBet(accessToken?: string) {
         queryClient.invalidateQueries({ queryKey: bettingKeys.userBets(address) });
         queryClient.invalidateQueries({ queryKey: bettingKeys.userStats(address) });
       }
-      // Also refresh outcomes to show updated pool
+      // Also refresh outcomes and active pools
       queryClient.invalidateQueries({ queryKey: bettingKeys.all });
     },
   });

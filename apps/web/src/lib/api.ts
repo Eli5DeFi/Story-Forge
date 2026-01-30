@@ -13,6 +13,10 @@ import type {
   StoryStats,
   UserStats,
   Bet,
+  LeaderboardEntry,
+  ActivePoolOutcome,
+  StoryNFTs,
+  NFTStats,
 } from '@/types/story';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
@@ -125,7 +129,7 @@ export async function placeBet(
   token: 'USDC' | 'USDT',
   accessToken: string,
 ): Promise<Bet> {
-  return fetchApi(`/betting/place`, {
+  return fetchApi(`/betting/bet`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -135,10 +139,9 @@ export async function placeBet(
 }
 
 export async function getUserBets(
-  walletAddress: string,
   accessToken: string,
 ): Promise<Bet[]> {
-  return fetchApi(`/betting/user/${walletAddress}`, {
+  return fetchApi(`/betting/user/bets`, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
@@ -146,14 +149,41 @@ export async function getUserBets(
 }
 
 export async function getUserStats(
-  walletAddress: string,
   accessToken: string,
 ): Promise<UserStats> {
-  return fetchApi(`/betting/user/${walletAddress}/stats`, {
+  return fetchApi(`/users/me/stats`, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
   });
+}
+
+// Active betting pools
+export async function getActivePools(storyId?: string): Promise<ActivePoolOutcome[]> {
+  const searchParams = new URLSearchParams();
+  if (storyId) searchParams.set('storyId', storyId);
+  const query = searchParams.toString();
+  return fetchApi(`/betting/pools/active${query ? `?${query}` : ''}`);
+}
+
+// Leaderboard
+export async function getLeaderboard(limit?: number): Promise<LeaderboardEntry[]> {
+  const query = limit ? `?limit=${limit}` : '';
+  return fetchApi(`/leaderboard${query}`);
+}
+
+export async function getLeaderboardByWinRate(limit?: number): Promise<LeaderboardEntry[]> {
+  const query = limit ? `?limit=${limit}` : '';
+  return fetchApi(`/leaderboard/win-rate${query}`);
+}
+
+// Story NFTs
+export async function getStoryNFTs(storyId: string): Promise<StoryNFTs> {
+  return fetchApi(`/stories/${storyId}/nfts`);
+}
+
+export async function getNFTStats(storyId: string): Promise<NFTStats> {
+  return fetchApi(`/stories/${storyId}/nft-stats`);
 }
 
 // Compendium functions
