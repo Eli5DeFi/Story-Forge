@@ -7,7 +7,7 @@ import { EntityExtractionService } from '../services/entity-extraction.service';
 import { StoryContextService } from '../services/story-context.service';
 import { ImageGenerationService } from '../services/image-generation.service';
 import { IpfsService } from '../services/ipfs.service';
-import { BettingService } from '../../betting/betting.service';
+import { EventsGateway } from '../../events/events.gateway';
 
 interface ChapterGenerationJob {
   storyId: string;
@@ -25,6 +25,7 @@ export class ChapterGenerationProcessor {
     private storyContext: StoryContextService,
     private imageGeneration: ImageGenerationService,
     private ipfsService: IpfsService,
+    private eventsGateway: EventsGateway,
   ) {}
 
   @Process('generate')
@@ -65,6 +66,13 @@ export class ChapterGenerationProcessor {
         });
 
         if (lastChapter && lastChapter.outcomes.length > 0) {
+          // Transform chapterSummaries to match expected interface
+          const previousChapters = context.chapterSummaries.map((ch) => ({
+            number: ch.chapterNumber,
+            summary: ch.summary,
+            selectedOutcome: ch.selectedOutcome,
+          }));
+
           const selection = await this.aiGeneration.selectOutcome(
             {
               storyId: context.storyId,
@@ -72,10 +80,10 @@ export class ChapterGenerationProcessor {
               genre: context.genre,
               worldState: context.worldState,
               plotThreads: context.plotThreads,
-              previousChapters: context.chapterSummaries,
+              previousChapters,
               currentChapter: context.currentChapter,
             },
-            lastChapter.outcomes.map((o) => ({
+            lastChapter.outcomes.map((o: any) => ({
               optionNumber: o.optionNumber,
               teaserText: o.teaserText,
               emotionalTone: o.emotionalTone || 'neutral',
@@ -84,7 +92,7 @@ export class ChapterGenerationProcessor {
           );
 
           const winningOutcome = lastChapter.outcomes.find(
-            (o) => o.optionNumber === selection.selectedOption,
+            (o: any) => o.optionNumber === selection.selectedOption,
           );
 
           if (winningOutcome) {
@@ -118,18 +126,25 @@ export class ChapterGenerationProcessor {
       await job.progress(25);
 
       // 3. Generate chapter content
+      // Transform chapterSummaries to match expected interface
+      const previousChaptersForGen = context.chapterSummaries.map((ch) => ({
+        number: ch.chapterNumber,
+        summary: ch.summary,
+        selectedOutcome: ch.selectedOutcome,
+      }));
+
       const generationContext = {
         storyId: context.storyId,
         title: context.storyTitle,
         genre: context.genre,
         worldState: context.worldState,
         plotThreads: context.plotThreads,
-        previousChapters: context.chapterSummaries,
+        previousChapters: previousChaptersForGen,
         currentChapter: context.currentChapter,
         selectedOutcome: selectedOutcome
           ? {
               teaserText: selectedOutcome.teaserText,
-              fullNarrative: selectedOutcome.fullNarrative,
+              fullNarrative: (selectedOutcome as any).fullNarrative,
             }
           : undefined,
       };
@@ -153,10 +168,10 @@ export class ChapterGenerationProcessor {
       const entities = await this.entityExtraction.extractEntities(
         generated.content,
         {
-          characters: story?.characters.map((c) => c.name) || [],
-          items: story?.items.map((i) => i.name) || [],
-          locations: story?.locations.map((l) => l.name) || [],
-          monsters: story?.monsters.map((m) => m.name) || [],
+          characters: story?.characters.map((c: { name: string }) => c.name) || [],
+          items: story?.items.map((i: { name: string }) => i.name) || [],
+          locations: story?.locations.map((l: { name: string }) => l.name) || [],
+          monsters: story?.monsters.map((m: { name: string }) => m.name) || [],
         },
       );
 
@@ -242,6 +257,25 @@ export class ChapterGenerationProcessor {
       this.logger.log(
         `Chapter ${newChapter.chapterNumber} generated and published for story ${storyId}`,
       );
+
+      // Emit WebSocket event for new chapter
+      this.eventsGateway.emitNewChapter(storyId, {
+        storyId,
+        chapterId: newChapter.id,
+        chapterNumber: newChapter.chapterNumber,
+        status: 'BETTING_OPEN',
+        title: newChapter.title,
+      });
+
+      // Emit events for new entities
+      for (const char of entities.characters.filter((c: any) => c.isNew)) {
+        this.eventsGateway.emitNewEntity(storyId, {
+          type: 'character',
+          id: char.name,
+          name: char.name,
+          chapterNumber: newChapterNumber,
+        });
+      }
 
       return {
         chapterId: newChapter.id,

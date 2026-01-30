@@ -152,7 +152,7 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   emitNewChapter(storyId: string, chapter: ChapterUpdate) {
     this.server.to(`story:${storyId}`).emit('chapter:new', chapter);
     // Also emit globally for homepage updates
-    this.server.emit('chapter:new:global', { storyId, ...chapter });
+    this.server.emit('chapter:new:global', chapter);
     this.logger.debug(`Emitted new chapter for story ${storyId}`);
   }
 

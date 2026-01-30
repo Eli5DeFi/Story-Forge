@@ -17,7 +17,8 @@
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "db:seed": "ts-node prisma/seed.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.12.0",
@@ -37,6 +38,7 @@
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
     "ethers": "^6.10.0",
+    "viem": "^2.5.0",
     "ioredis": "^5.3.2",
     "openai": "^4.24.0",
     "passport": "^0.7.0",
