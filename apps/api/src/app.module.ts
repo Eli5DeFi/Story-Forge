@@ -10,6 +10,9 @@ import { BettingModule } from './modules/betting/betting.module';
 import { CompendiumModule } from './modules/compendium/compendium.module';
 import { NftModule } from './modules/nft/nft.module';
 import { UserModule } from './modules/user/user.module';
+import { EventsModule } from './modules/events/events.module';
+import { JobsModule } from './jobs/jobs.module';
+import { AdminModule } from './modules/admin/admin.module';
 
 @Module({
   imports: [
@@ -38,6 +41,13 @@ import { UserModule } from './modules/user/user.module';
     CompendiumModule,
     NftModule,
     UserModule,
+    EventsModule,
+
+    // Background jobs
+    JobsModule,
+
+    // Admin functionality
+    AdminModule,
   ],
 })
 export class AppModule {}
